@@ -10,7 +10,9 @@
 /qemu.pcap.*
 /qemu.out
 /qemu.log
-/gradelib.pyc
+__pycache__/
+*.py[cod]
+*$py.class
 /lab*-handin.tar.gz
 /lab?/
 /sol?/
