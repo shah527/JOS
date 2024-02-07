@@ -190,7 +190,9 @@ void mem_init(void)
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
-
+	int perm;
+	perm = PTE_U | PTE_P;
+	boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), perm);
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
 	// stack.  The kernel stack grows down from virtual address KSTACKTOP.
@@ -202,6 +204,8 @@ void mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
+	perm = PTE_W | PTE_P;
+	boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), perm);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -211,7 +215,8 @@ void mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
-
+	perm = PTE_W | PTE_P;
+	boot_map_region(kern_pgdir, KERNBASE, -KERNBASE, 0, perm);
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
 
