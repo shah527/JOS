@@ -6,7 +6,7 @@
 #include <inc/memlayout.h>
 #include <inc/assert.h>
 #include <inc/x86.h>
-
+#include <kern/pmap.h>
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
@@ -26,6 +26,7 @@ static struct Command commands[] = {
 	{"help", "Display this list of commands", mon_help},
 	{"kerninfo", "Display information about the kernel", mon_kerninfo},
 	{"backtrace", "Show the backtrace of the current kernel stack", mon_backtrace},
+	{"showmappings", "Display the physical page mappings that apply to a particular range of virtual addresses in the currently active address space", mon_mappings},
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -140,6 +141,26 @@ int mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 		}
 	}
 	return 0;
+}
+
+int mon_mappings(int argc, char **argv, struct Trapframe *tf) {
+    uintptr_t start = strtol(argv[1], NULL, 0);
+    uintptr_t end = strtol(argv[2], NULL, 0);
+    uintptr_t i;
+    pte_t *pte;
+    for (i = start; i <= end; i += PGSIZE) {
+        pte = pgdir_walk(kern_pgdir, (void *)i, 0);
+        if (pte && (*pte & PTE_P)) {
+            cprintf("0x%08x       0x%08x       %c%c%c\n", i,
+                    PTE_ADDR(*pte),
+                    (*pte & PTE_P) ? 'P' : '-',
+                    (*pte & PTE_W) ? 'W' : '-',
+                    (*pte & PTE_U) ? 'U' : '-');
+        } else {
+            cprintf("0x%08x       not mapped\n", i);
+        }
+    }
+    return 0;
 }
 
 /***** Kernel monitor command interpreter *****/
