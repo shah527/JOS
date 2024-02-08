@@ -1,0 +1,5 @@
+A. IDK
+B. Access and Manipulation of the page tables is administrated by the Kernel. In order for a user process to access the page table, the kernel will check the user permission against the permission flags set in the table. The pages containing the kernels code is configured such that user processes will not be able to read or alter the contents.
+C. Each page table can be 4MB large. There are 10 bits allocated to the Page Directory and 10 bits allocated to Page Table, meaning there can be 2^20 4MB pages. This is 4194 GB worth of physical memory.
+D. Each table has a max of 2^10 32 bit rows. There are 2^10 of these tables. Additionally there is one 2^20 * 32 bit page directory table. 2^20 * 32 bits = 4.194 MB worth of page tables.
+E. 
