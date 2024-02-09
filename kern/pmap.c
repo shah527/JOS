@@ -950,3 +950,12 @@ check_page_installed_pgdir(void)
 
 	cprintf("check_page_installed_pgdir() succeeded!\n");
 }
+
+// LLMPROMPT: How to cast void pointer C syntax
+// LLMPROMPT: On a high level explain to me dont give too much details or the code how can i implement a functiion that returns
+// a pointer to the page table entry for linear address 'va' need to walk the two-level page table structure
+// LLMPROMPT: noe how to use this walk function in another boot map function to map [va, va+size) of virtual address space to physical [pa, pa+size)
+// in the page table rooted at pgdir explain from high level like before not too much details
+// LLMPROMPT: qemu how to kill processes not running jos properly
+// LLMPROMPT: explain how the entry.S file works
+// LLMPROMPT: gdb how to run qemu to check page table entries addresses
