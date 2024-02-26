@@ -59,3 +59,38 @@
  */
 
 
+TRAPHANDLER_NOEC(t_divide, T_DIVIDE);
+TRAPHANDLER_NOEC(t_debug, T_DEBUG);
+TRAPHANDLER_NOEC(t_nmi, T_NMI);
+TRAPHANDLER_NOEC(t_brkpt, T_BRKPT);
+TRAPHANDLER_NOEC(t_oflow, T_OFLOW);
+TRAPHANDLER_NOEC(t_bound, T_BOUND);
+TRAPHANDLER_NOEC(t_illop, T_ILLOP);
+TRAPHANDLER_NOEC(t_device, T_DEVICE);
+TRAPHANDLER(t_dblflt, T_DBLFLT);
+TRAPHANDLER_NOEC(t_tss, T_TSS);
+TRAPHANDLER_NOEC(t_segnp, T_SEGNP);
+TRAPHANDLER_NOEC(t_stack, T_STACK);
+TRAPHANDLER_NOEC(t_gpflt, T_GPFLT);
+TRAPHANDLER(t_pgflt, T_PGFLT);
+TRAPHANDLER_NOEC(t_fperr, T_FPERR);
+TRAPHANDLER_NOEC(t_align, T_ALIGN);
+TRAPHANDLER_NOEC(t_mchk, T_MCHK);
+TRAPHANDLER_NOEC(t_simderr, T_SIMDERR);
+TRAPHANDLER_NOEC(t_syscall, T_SYSCALL);
+.globl _alltraps
+_alltraps:
+    # Build the trap frame
+    pushal
+    # Load GD_KD into %ds and %es
+    movw $(GD_KD), %ax
+    movw %ax, %ds
+    movw %ax, %es
+    # Push %esp to pass a pointer to the Trapframe as an argument to trap()
+    pushl %esp
+    call trap
+    # Can trap ever return here?
+    addl $4, %esp
+    popal
+    addl $8, %esp # Clean up the stack
+    iret
