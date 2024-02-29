@@ -170,8 +170,8 @@ void mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
-	envs = (struct Env*) boot_alloc(NENV * sizeof(struct Env));
-   memset(envs, 0, NENV * sizeof(struct Env));
+	envs = (struct Env *)boot_alloc(NENV * sizeof(struct Env));
+	memset(envs, 0, NENV * sizeof(struct Env));
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
 	// up the list of free physical pages. Once we've done so, all further
@@ -572,12 +572,28 @@ static uintptr_t user_mem_check_addr;
 // Returns 0 if the user program can access this range of addresses,
 // and -E_FAULT otherwise.
 //
-int
-user_mem_check(struct Env *env, const void *va, size_t len, int perm)
-{
-	// LAB 3: Your code here.
-
-	return 0;
+int user_mem_check(struct Env *env, const void *va, size_t len, int perm) {
+    uintptr_t start = ROUNDDOWN((uintptr_t)va, PGSIZE);
+    uintptr_t end = ROUNDUP((uintptr_t)va + len, PGSIZE);
+    perm |= PTE_P; 
+    for (uintptr_t addr = start; addr < end; addr += PGSIZE) {
+        if (addr >= ULIM) {
+            user_mem_check_addr = (addr > (uintptr_t)va) ? addr : (uintptr_t)va;
+            return -E_FAULT;
+        }
+        pte_t *pte = pgdir_walk(env->env_pgdir, (void *)addr, 0);
+        if (!pte) {
+            user_mem_check_addr = (addr > (uintptr_t)va) ? addr : (uintptr_t)va;
+            return -E_FAULT;
+        }
+        if (!(*pte & PTE_P) || 
+            ((perm & PTE_W) && !(*pte & PTE_W)) || 
+            ((perm & PTE_U) && !(*pte & PTE_U))) {
+            user_mem_check_addr = (addr > (uintptr_t)va) ? addr : (uintptr_t)va;
+            return -E_FAULT;
+        }
+    }
+    return 0; 
 }
 
 //
@@ -587,13 +603,14 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 // If it cannot, 'env' is destroyed and, if env is the current
 // environment, this function will not return.
 //
-void
-user_mem_assert(struct Env *env, const void *va, size_t len, int perm)
+void user_mem_assert(struct Env *env, const void *va, size_t len, int perm)
 {
-	if (user_mem_check(env, va, len, perm | PTE_U) < 0) {
+	if (user_mem_check(env, va, len, perm | PTE_U) < 0)
+	{
 		cprintf("[%08x] user_mem_check assertion failure for "
-			"va %08x\n", env->env_id, user_mem_check_addr);
-		env_destroy(env);	// may not return
+				"va %08x\n",
+				env->env_id, user_mem_check_addr);
+		env_destroy(env); // may not return
 	}
 }
 
@@ -765,7 +782,7 @@ check_kern_pgdir(void)
 		assert(check_va2pa(pgdir, UPAGES + i) == PADDR(pages) + i);
 
 	// check envs array (new test for lab 3)
-	n = ROUNDUP(NENV*sizeof(struct Env), PGSIZE);
+	n = ROUNDUP(NENV * sizeof(struct Env), PGSIZE);
 	for (i = 0; i < n; i += PGSIZE)
 		assert(check_va2pa(pgdir, UENVS + i) == PADDR(envs) + i);
 	// check phys mem

@@ -88,3 +88,63 @@ _alltraps:
     movw %bx, %es
     pushl %esp
     call trap
+
+
+/* LLMPROMPT:  how to save registers and set up a stack frame trapentry do not give code explain me*/
+/* LLMPROMPT: alltraps not working how to fix */
+/* LLMPROMPT: this is my output where  could it be wrong how is the fix what explain concepts only
+AssertionError: ...
+         check_page_installed_pgdir() succeeded!
+         [00000000] new env 00001000
+    GOOD Incoming TRAP frame at 0xefffffc4
+         TRAP frame at 0xefffffc4
+           edi  0x00000000
+    ...
+           cs   0x----dfc0
+           flag 0x00000023
+    GOOD [00001000] free env 00001000
+         Destroyed the only environment - nothing more to do!
+         Welcome to the JOS kernel monitor!
+         Type 'help' for a list of commands.
+         qemu-system-i386: terminating on signal 15 from pid 1546179 (make)
+    MISSING 'TRAP frame at 0xf.......'
+    MISSING '  trap 0x00000000 Divide error'
+    MISSING '  eip  0x008.....'
+    MISSING '  ss   0x----0023'
+    
+    QEMU output saved to jos.out.divzero
+softint: FAIL (1.0s) 
+    AssertionError: ...
+           esp  0x00000023
+           ss   0x----ff53
+    GOOD [00001000] free env 00001000
+         Destroyed the only environment - nothing more to do!
+    GOOD Welcome to the JOS kernel monitor!
+         Type 'help' for a list of commands.
+         qemu-system-i386: terminating on signal 15 from pid 1548218 (make)
+    MISSING 'Incoming TRAP frame at 0xefffffbc'
+    MISSING 'TRAP frame at 0xf.......'
+    MISSING '  trap 0x0000000d General Protection'
+    MISSING '  eip  0x008.....'
+    MISSING '  ss   0x----0023'
+    
+    QEMU output saved to jos.out.softint
+badsegment: FAIL (0.9s) 
+    AssertionError: ...
+           esp  0x00000023
+           ss   0x----ff53
+    GOOD [00001000] free env 00001000
+         Destroyed the only environment - nothing more to do!
+         Welcome to the JOS kernel monitor!
+         Type 'help' for a list of commands.
+         qemu-system-i386: terminating on signal 15 from pid 1550893 (make)
+    MISSING 'Incoming TRAP frame at 0xefffffbc'
+    MISSING 'TRAP frame at 0xf.......'
+    MISSING '  trap 0x0000000d General Protection'
+    MISSING '  err  0x00000028'
+    MISSING '  eip  0x008.....'
+    MISSING '  ss   0x----0023'
+    
+    QEMU output saved to jos.out.badsegment
+Part A score: 0/30 
+*/
