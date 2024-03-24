@@ -1,0 +1,5 @@
+1. Each exception or interrupt has its own set of handler functions, which makes the kernel able to deal with different types of exceptions/interrupts containing action implementations 
+specific for given exceptions or interrupts. Without individual handlers, the kernel would not be able to do actions for different situations, that execution context would be lost for exception-specific responses that don't have their own handler.
+
+2. No, I did not. The user/softint program produces a general protection fault despite explicitly invoking int $14 because protected environments 
+restrict software interrupts to those explicitly permitted by the kernel (no direct user access to specific interrupts). Allowing int $14 to directly call the page fault handler without proper authorization would compromise system integrity by exposing kernel functionality to user mode.
