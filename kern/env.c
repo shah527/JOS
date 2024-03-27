@@ -122,7 +122,8 @@ void env_init(void)
 	env_free_list = NULL;
 	for (int i = NENV - 1; i >= 0; i--)
 	{
-		envs[i].env_status = ENV_FREE;
+		envs[i].env_id = 0;
+		// envs[i].env_status = ENV_FREE;
 		envs[i].env_link = env_free_list;
 		env_free_list = &envs[i];
 	}
@@ -293,7 +294,7 @@ region_alloc(struct Env *e, void *va, size_t len)
 
 	while (start < end)
 	{
-		struct PageInfo *pp = page_alloc(ALLOC_ZERO);
+		struct PageInfo *pp = page_alloc(0);
 		if (!pp)
 		{
 			panic("region_alloc: out of memory");
@@ -571,6 +572,6 @@ void env_run(struct Env *e)
         lcr3(PADDR(curenv->env_pgdir));
     }
 
-	lock_kernel();
+	unlock_kernel();
     env_pop_tf(&curenv->env_tf);
 }

@@ -159,12 +159,12 @@ void trap_init_percpu(void)
 
 	// Initialize the TSS slot of the gdt.
 	gdt[(GD_TSS0 >> 3) + i] = SEG16(STS_T32A, (uint32_t)(&(thiscpu->cpu_ts)),
-							  sizeof(struct Taskstate) - 1, 0);
+							  sizeof(struct Taskstate), 0);
 	gdt[(GD_TSS0 >> 3) + i].sd_s = 0;
 
 	// Load the TSS selector (like other segment selectors, the
 	// bottom three bits are special; we leave them 0)
-	ltr(GD_TSS0 + (i << 3));
+	ltr(GD_TSS0 + 8 * i);
 
 	// Load the IDT
 	lidt(&idt_pd);
@@ -290,8 +290,8 @@ void trap(struct Trapframe *tf)
 		// Acquire the big kernel lock before doing any
 		// serious kernel work.
 		// LAB 4: Your code here.
-		assert(curenv);
 		lock_kernel();
+		assert(curenv);
 
 		// Garbage collect if current enviroment is a zombie
 		if (curenv->env_status == ENV_DYING) {
@@ -334,7 +334,7 @@ void page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
-	if ((tf->tf_cs & 0x3) == 1)
+	if ((tf->tf_cs & 0x3) == 0)
 	{
 		panic("page fault in kernel mode");
 	}

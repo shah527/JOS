@@ -199,7 +199,7 @@ void mem_init(void)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
 	int perm;
-	perm = PTE_U | PTE_P;
+	perm = PTE_U;
 	boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), perm);
 	//////////////////////////////////////////////////////////////////////
 	// Map the 'envs' array read-only by the user at linear address UENVS
@@ -208,7 +208,7 @@ void mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
-	boot_map_region(kern_pgdir, UENVS, ROUNDUP(NENV * sizeof(struct Env), PGSIZE), PADDR(envs), PTE_U);
+	boot_map_region(kern_pgdir, UENVS, PTSIZE, PADDR(envs), PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -221,7 +221,7 @@ void mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-	perm = PTE_W | PTE_P;
+	perm = PTE_W;
 	boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), perm);
 
 	//////////////////////////////////////////////////////////////////////
@@ -233,12 +233,12 @@ void mem_init(void)
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
 
-	// Initialize the SMP-related parts of the memory map
-	mem_init_mp();
 
-	perm = PTE_W | PTE_P;
+	perm = PTE_W;
 	boot_map_region(kern_pgdir, KERNBASE, -KERNBASE, 0, perm);
 	// Check that the initial page directory has been set up correctly.
+	// Initialize the SMP-related parts of the memory map
+	mem_init_mp();
 	check_kern_pgdir();
 
 	// Switch from the minimal entry page directory to the full kern_pgdir
@@ -288,7 +288,7 @@ mem_init_mp(void)
 	uintptr_t kstacktop_i;
 	for(int i = 0; i < NCPU; i++) {
 		kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
-		boot_map_region(kern_pgdir, kstacktop_i - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W | PTE_P);
+		boot_map_region(kern_pgdir, kstacktop_i - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W);
 	}
 	return;
 }
@@ -329,33 +329,48 @@ void page_init(void)
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
 	size_t i;
-	for (i = 0; i < npages; i++)
-	{
-		if (i == 0)
-		{
-			pages[i].pp_ref = 1;
-			pages[i].pp_link = NULL;
-		}
-		else if (i >= IOPHYSMEM / PGSIZE && i < EXTPHYSMEM / PGSIZE)
-		{
-			pages[i].pp_ref = 1;
-			pages[i].pp_link = NULL;
-		}
-		else if (i >= EXTPHYSMEM / PGSIZE && i <= (((int)boot_alloc(0) - KERNBASE) / PGSIZE))
-		{
-			pages[i].pp_ref = 1;
-			pages[i].pp_link = NULL;
-		}
-		else if(i == MPENTRY_PADDR / PGSIZE) {
-			pages[i].pp_ref = 1;
-			pages[i].pp_link = NULL;
-		}
-		else
-		{
-			pages[i].pp_ref = 0;
-			pages[i].pp_link = page_free_list;
-			page_free_list = &pages[i];
-		}
+	// for (i = 0; i < npages; i++)
+	// {
+	// 	if (i == 0)
+	// 	{
+	// 		pages[i].pp_ref = 1;
+	// 		pages[i].pp_link = NULL;
+	// 	}
+	// 	else if (i >= IOPHYSMEM / PGSIZE && i < EXTPHYSMEM / PGSIZE)
+	// 	{
+	// 		pages[i].pp_ref = 1;
+	// 		pages[i].pp_link = NULL;
+	// 	}
+	// 	else if (i >= EXTPHYSMEM / PGSIZE && i <= (((int)boot_alloc(0) - KERNBASE) / PGSIZE))
+	// 	{
+	// 		pages[i].pp_ref = 1;
+	// 		pages[i].pp_link = NULL;
+	// 	}
+	// 	else if(i == MPENTRY_PADDR / PGSIZE) {
+	// 		pages[i].pp_ref = 1;
+	// 		pages[i].pp_link = NULL;
+	// 	}
+	// 	else
+	// 	{
+	// 		pages[i].pp_ref = 0;
+	// 		pages[i].pp_link = page_free_list;
+	// 		page_free_list = &pages[i];
+	// 	}
+	// }
+
+	for (i = 1; i < MPENTRY_PADDR/PGSIZE; i++) {
+		pages[i].pp_ref = 0;
+		pages[i].pp_link = NULL;
+		page_free_list = &pages[i];
+	}
+	// int med = (int)ROUNDUP(kern_top - 0xf0000000, PGSIZE)/PGSIZE;
+	int med = (int)ROUNDUP(((char*)envs) + (sizeof(struct Env) * NENV) - 0xf0000000, PGSIZE)/PGSIZE;
+	// med = (int) percpu_kstacks[NCPU-1];
+	cprintf("med: %x\n", med);
+	for (i = med; i < npages; i++) {
+		pages[i].pp_ref = 0;
+		pages[i].pp_link = page_free_list;
+		page_free_list = &pages[i];
 	}
 }
 
@@ -628,7 +643,9 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	size = ROUNDUP(size, PGSIZE);
+	size = ROUNDUP(pa+size, PGSIZE);
+	pa = ROUNDDOWN(pa, PGSIZE);
+	size -= pa;
 	if(base + size > MMIOLIM) {
 		panic("mmio_map_region overflow");
 	}
