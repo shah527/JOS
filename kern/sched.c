@@ -31,15 +31,15 @@ sched_yield(void)
 	// LAB 4: Your code here.
 	struct Env *e = curenv;
 	int curr_env_indx = 0;
-	if (e) curr_env_indx=ENVX(e->env_id);
-	for(int i = 0; i < NENV; i++) {
+	if (curenv) curr_env_indx=ENVX(curenv->env_id);
+	for(int i = 0; i < NENV; ++i) {
 		int modwrap = (curr_env_indx + i) % NENV;
 		if(envs[modwrap].env_status == ENV_RUNNABLE) {
-			env_run(&envs[curr_env_indx]);
+			env_run(&envs[modwrap]);
 		}
 	}
-	if (e && e->env_status == ENV_RUNNING) {
-		env_run(e);
+	if (curenv && curenv->env_status == ENV_RUNNING) {
+		env_run(curenv);
 	}
 
 	// sched_halt never returns
