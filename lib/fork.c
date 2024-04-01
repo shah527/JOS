@@ -25,6 +25,9 @@ pgfault(struct UTrapframe *utf)
 	//   (see <inc/memlayout.h>).
 
 	// LAB 4: Your code here.
+		if (!((err & FEC_WR) && (uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_COW))) {
+			panic("not COW");
+		}
 
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
@@ -33,6 +36,16 @@ pgfault(struct UTrapframe *utf)
 	//   You should make three system calls.
 
 	// LAB 4: Your code here.
+	int check;
+	addr = ROUNDDOWN(addr, PGSIZE);
+	check = sys_page_alloc(0, PFTEMP, PTE_W|PTE_U|PTE_P);
+	if(check < 0) {panic("pagealloc");}
+	memcpy(PFTEMP, addr, PGSIZE);
+	check = sys_page_map(0, PFTEMP, 0, addr, PTE_W|PTE_U|PTE_P);
+	if(check < 0) {panic("pagemap");}
+	check = sys_page_unmap(0, PFTEMP);
+	if(check < 0) {panic("pageunmap");}
+	return;
 
 	panic("pgfault not implemented");
 }
@@ -52,9 +65,16 @@ static int
 duppage(envid_t envid, unsigned pn)
 {
 	int r;
+	int check;
 
 	// LAB 4: Your code here.
-	panic("duppage not implemented");
+	void* address = (void*) (PGSIZE * pn);
+	if ((uvpt[pn] & PTE_W) || (uvpt[pn] & PTE_COW)) {
+		check = sys_page_map(0, address, envid, address, PTE_COW|PTE_U|PTE_P);
+		if(check < 0) {panic("dupepage2");}
+		check = sys_page_map(0, address, 0, address, PTE_COW|PTE_U|PTE_P);
+		if(check < 0) {panic("dupepage3");}
+	} else sys_page_map(0, address, envid, address, PTE_U|PTE_P);
 	return 0;
 }
 
@@ -78,7 +98,27 @@ envid_t
 fork(void)
 {
 	// LAB 4: Your code here.
-	panic("fork not implemented");
+	set_pgfault_handler(pgfault);
+	int check;
+	uint32_t addr;
+	envid_t envid;
+	envid = sys_exofork();
+	if (envid < 0) {panic("fork: sysexofork:%e", envid);}
+	if (envid == 0) {
+		thisenv = &envs[ENVX(sys_getenvid())];
+		return 0;
+	}
+	for (addr = 0; addr < USTACKTOP; addr += PGSIZE)
+		if ((uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_U)) {
+			duppage(envid, PGNUM(addr));
+		}
+	check = sys_page_alloc(envid, (void *)(UXSTACKTOP-PGSIZE), PTE_U|PTE_W|PTE_P);
+	if(check < 0) {panic("fork:1");}
+	extern void _pgfault_upcall();
+	sys_env_set_pgfault_upcall(envid, _pgfault_upcall);
+	check = sys_env_set_status(envid, ENV_RUNNABLE);
+	if(check < 0) {panic("sys_env_set_status");}
+	return envid;
 }
 
 // Challenge!
@@ -88,3 +128,4 @@ sfork(void)
 	panic("sfork not implemented");
 	return -E_INVAL;
 }
+

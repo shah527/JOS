@@ -56,7 +56,6 @@ i386_detect_memory(void)
 	cprintf("Physical memory: %uK available, base = %uK, extended = %uK\n",
 			totalmem, basemem, totalmem - basemem);
 }
-
 // --------------------------------------------------------------
 // Set up memory mappings above UTOP.
 // --------------------------------------------------------------
@@ -535,14 +534,7 @@ int page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 	if (*pte & PTE_P)
 	{
 		struct PageInfo *old_pp = pa2page(PTE_ADDR(*pte));
-		if (old_pp != pp)
-		{
-			page_remove(pgdir, va);
-		}
-		else
-		{
-			pp->pp_ref--;
-		}
+		page_remove(pgdir, va);
 	}
 	*pte = page2pa(pp) | perm | PTE_P;
 	return 0;
