@@ -88,10 +88,9 @@ sched_halt(void)
 		"pushl $0\n"
         // LAB 4:
 		// Uncomment the following line after completing exercise 13
-		//"sti\n"
+		"sti\n"
 		"1:\n"
 		"hlt\n"
 		"jmp 1b\n"
 	: : "a" (thiscpu->cpu_ts.ts_esp0));
 }
-

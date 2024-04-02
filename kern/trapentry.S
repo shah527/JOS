@@ -79,6 +79,12 @@ TRAPHANDLER(t_align, T_ALIGN);
 TRAPHANDLER_NOEC(t_mchk, T_MCHK);
 TRAPHANDLER_NOEC(t_simderr, T_SIMDERR);
 TRAPHANDLER_NOEC(t_syscall, T_SYSCALL);
+TRAPHANDLER_NOEC(th_irq_timer, IRQ_OFFSET + IRQ_TIMER)
+TRAPHANDLER_NOEC(th_irq_kbd, IRQ_OFFSET + IRQ_KBD)
+TRAPHANDLER_NOEC(th_irq_serial, IRQ_OFFSET + IRQ_SERIAL)
+TRAPHANDLER_NOEC(th_irq_spurious, IRQ_OFFSET + IRQ_SPURIOUS)
+TRAPHANDLER_NOEC(th_irq_ide, IRQ_OFFSET + IRQ_IDE)
+TRAPHANDLER_NOEC(th_irq_error, IRQ_OFFSET + IRQ_ERROR)
 .globl _alltraps
 _alltraps:
     pushl %ds
@@ -112,9 +118,9 @@ AssertionError: ...
     MISSING '  trap 0x00000000 Divide error'
     MISSING '  eip  0x008.....'
     MISSING '  ss   0x----0023'
-    
+
     QEMU output saved to jos.out.divzero
-softint: FAIL (1.0s) 
+softint: FAIL (1.0s)
     AssertionError: ...
            esp  0x00000023
            ss   0x----ff53
@@ -128,9 +134,9 @@ softint: FAIL (1.0s)
     MISSING '  trap 0x0000000d General Protection'
     MISSING '  eip  0x008.....'
     MISSING '  ss   0x----0023'
-    
+
     QEMU output saved to jos.out.softint
-badsegment: FAIL (0.9s) 
+badsegment: FAIL (0.9s)
     AssertionError: ...
            esp  0x00000023
            ss   0x----ff53
@@ -145,7 +151,7 @@ badsegment: FAIL (0.9s)
     MISSING '  err  0x00000028'
     MISSING '  eip  0x008.....'
     MISSING '  ss   0x----0023'
-    
+
     QEMU output saved to jos.out.badsegment
-Part A score: 0/30 
+Part A score: 0/30
 */

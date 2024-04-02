@@ -129,7 +129,7 @@ sys_env_set_status(envid_t envid, int status)
 
 	// LAB 4: Your code here.
 	if(!(status == ENV_NOT_RUNNABLE || status == ENV_RUNNABLE)) return -E_INVAL;
-	struct Env *e; 
+	struct Env *e;
 	int check = envid2env(envid, &e, 1);
 	if(check) return check;
 	e->env_status = status;
@@ -148,7 +148,7 @@ static int
 sys_env_set_pgfault_upcall(envid_t envid, void *func)
 {
 	// LAB 4: Your code here.
-	struct Env *e; 
+	struct Env *e;
 	int check = envid2env(envid, &e, 1);
 	if(check) return check;
 	e->env_pgfault_upcall = func;
@@ -297,7 +297,27 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+    struct Env *e;
+    struct PageInfo *pp;
+    pte_t *pte;
+
+    if (envid2env(envid, &e, 0) != 0)  return envid2env(envid, &e, 0);
+    if (e->env_ipc_recving == 0) return -E_IPC_NOT_RECV;
+    if ((uint32_t)srcva < UTOP) {
+        if ((PGOFF(srcva) != 0) || ((perm & (PTE_U | PTE_P)) != (PTE_U | PTE_P))
+        || ((perm & ~(PTE_SYSCALL)) != 0) || ((pp = page_lookup(curenv->env_pgdir, srcva, &pte)) == NULL) ||
+            ((*pte & PTE_W) == 0 && (perm & PTE_W) == PTE_W))
+            return -E_INVAL;
+        if (page_insert(e->env_pgdir, pp, e->env_ipc_dstva, perm) != 0) return page_insert(e->env_pgdir, pp, e->env_ipc_dstva, perm);
+        e->env_ipc_perm = perm;
+    } else {
+        e->env_ipc_perm = 0;
+    }
+    e->env_status = ENV_RUNNABLE;
+    e->env_ipc_recving = 0;
+    e->env_ipc_from = curenv->env_id;
+    e->env_ipc_value = value;
+    return 0;
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -315,7 +335,11 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+	//panic("sys_ipc_recv not implemented");
+	if (PGOFF(dstva) != 0 && (uint32_t)dstva)  return -E_INVAL;
+	curenv->env_status = ENV_NOT_RUNNABLE;
+	curenv->env_ipc_recving = 1;
+	curenv->env_ipc_dstva = dstva;
 	return 0;
 }
 
@@ -355,6 +379,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_env_set_status(a1, a2);
 	case SYS_env_set_pgfault_upcall:
 		return sys_env_set_pgfault_upcall(a1, (void*)(a2));
+	case SYS_ipc_recv:
+      return sys_ipc_recv((void*)a1);
+   case SYS_ipc_try_send:
+      return sys_ipc_try_send(a1, a2, (void*)a3, a4);
 	default:
 		return -E_INVAL;
 	}
