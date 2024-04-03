@@ -1,0 +1,10 @@
+1. MBOOTPHYS is necessary in kern/mpentry.S but not boot/boot.S because in mpentry.S the macro is used to convert virtual to physical address, but boot.S works in real
+mode so virtual and physical addresses are the same. In protected mode, APs need MBOOTPHYS to reach the addressess that are not accessible.
+
+2. We need seperate kernel stacks even after having big kernel lock because there could be situations where multiple CPUS have same kernel stack, and one gets interrupted, then
+the interrupt handler will save the context in this stack, but the other CPU can modify this and the context can get lost or corrupted. The stack data can get altered
+and system might even crash, which is why wee need seperate kernel stacks.
+
+3. Before and after the call to lcr3() we can dereference the pointer e, and its virtual address is constant, so it stays the same across switches.
+
+4. It saves the old environment registers to preserve the state, so that on resuming it can continute where it left off. They are saved in Trapframe env_tf
