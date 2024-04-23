@@ -55,10 +55,6 @@ sys_env_destroy(envid_t envid)
 
 	if ((r = envid2env(envid, &e, 1)) < 0)
 		return r;
-	if (e == curenv)
-		cprintf("[%08x] exiting gracefully\n", curenv->env_id);
-	else
-		cprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
 	env_destroy(e);
 	return 0;
 }
@@ -104,7 +100,7 @@ sys_exofork(void)
 
 	struct Env *e;
 	int ret = env_alloc(&e, curenv->env_id);
-	if (ret) return ret;
+	if (ret < 0) return ret;
 	e->env_status = ENV_NOT_RUNNABLE;
 	e->env_tf = curenv->env_tf;
 	e->env_tf.tf_regs.reg_eax = 0;
@@ -136,6 +132,32 @@ sys_env_set_status(envid_t envid, int status)
 	return 0;
 }
 
+// Set envid's trap frame to 'tf'.
+// tf is modified to make sure that user environments always run at code
+// protection level 3 (CPL 3), interrupts enabled, and IOPL of 0.
+//
+// Returns 0 on success, < 0 on error.  Errors are:
+//	-E_BAD_ENV if environment envid doesn't currently exist,
+//		or the caller doesn't have permission to change envid.
+static int
+sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
+{
+	// LAB 5: Your code here.
+	// Remember to check whether the user has supplied us with a good
+	// address!
+	struct Env* env;
+	int check = envid2env(envid, &env, 1);
+	if(check != 0) {return check;}
+	user_mem_assert(env, tf, sizeof(struct Trapframe), PTE_W);
+    tf->tf_eflags |= FL_IF;
+    tf->tf_eflags &= ~FL_IOPL_3;
+	tf->tf_cs |= 3;
+    tf->tf_ss |= 3;
+    env->env_tf = *tf;
+    return 0;
+	panic("sys_env_set_trapframe not implemented");
+}
+
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
 // Env's 'env_pgfault_upcall' field.  When 'envid' causes a page fault, the
 // kernel will push a fault record onto the exception stack, then branch to
@@ -150,7 +172,7 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func)
 	// LAB 4: Your code here.
 	struct Env *e;
 	int check = envid2env(envid, &e, 1);
-	if(check) return check;
+	if(check < 0) return check;
 	e->env_pgfault_upcall = func;
 	return 0;
 }
@@ -184,14 +206,13 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	// LAB 4: Your code here.
 	struct Env *e;
 	int check = envid2env(envid, &e, 1);
-	if(check) return check;
 	struct PageInfo *pp = page_alloc(1);
 	if (!pp) return -E_NO_MEM;
-	pp->pp_ref++;
 	check = page_insert(e->env_pgdir, pp, va, perm);
-	if(check) {page_free(pp); return check;}
+	if(check < 0) {page_free(pp); return check;}
 	return 0;
 	panic("sys_page_alloc not implemented");
+
 }
 
 
@@ -248,9 +269,12 @@ sys_page_unmap(envid_t envid, void *va)
 	// Hint: This function is a wrapper around page_remove().
 
 	// LAB 4: Your code here.
+	if (va>=(void*)UTOP || ROUNDDOWN(va,PGSIZE)!=va) {
+		return -E_INVAL;
+	}
 	struct Env *e;
 	int check = envid2env(envid, &e, 1);
-	if(check) return check;
+	if(check < 0) return check;
 	page_remove(e->env_pgdir, va);
 	return 0;
 }
@@ -377,6 +401,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_page_unmap(a1, (void*)(a2));
 	case SYS_env_set_status:
 		return sys_env_set_status(a1, a2);
+	case SYS_env_set_trapframe:
+    	return sys_env_set_trapframe(a1, (struct Trapframe *)(a2));
 	case SYS_env_set_pgfault_upcall:
 		return sys_env_set_pgfault_upcall(a1, (void*)(a2));
 	case SYS_ipc_recv:

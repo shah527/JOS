@@ -65,16 +65,27 @@ static int
 duppage(envid_t envid, unsigned pn)
 {
 	int r;
-	int check;
+	uintptr_t addr = pn * PGSIZE;
+	pte_t pte = uvpt[pn];
+	envid_t srcid = sys_getenvid();
+	int perm;
 
 	// LAB 4: Your code here.
-	void* address = (void*) (PGSIZE * pn);
-	if ((uvpt[pn] & PTE_W) || (uvpt[pn] & PTE_COW)) {
-		check = sys_page_map(0, address, envid, address, PTE_COW|PTE_U|PTE_P);
-		if(check < 0) {panic("dupepage2");}
-		check = sys_page_map(0, address, 0, address, PTE_COW|PTE_U|PTE_P);
-		if(check < 0) {panic("dupepage3");}
-	} else sys_page_map(0, address, envid, address, PTE_U|PTE_P);
+	if (((pte & PTE_W) || (pte & PTE_COW)) && !(pte & PTE_SHARE)) {
+		pte = (pte & (~PTE_W)) | PTE_COW;
+		perm = pte & PTE_SYSCALL;
+		if ((r = sys_page_map(srcid, (void*)addr, envid, (void*)addr, perm)) < 0) {
+			panic("sys_page_map: %e\n", r);
+		}
+		if ((r = sys_page_map(srcid, (void*)addr, srcid, (void*)addr, perm)) < 0) {
+			panic("sys_page_map: %e\n", r);
+		}
+	} else {
+		perm = pte & PTE_SYSCALL;
+		if ((r = sys_page_map(srcid, (void*)addr, envid, (void*)addr, perm)) < 0) {
+			panic("sys_page_map: %e\n", r);
+		}
+	}
 	return 0;
 }
 
@@ -128,4 +139,3 @@ sfork(void)
 	panic("sfork not implemented");
 	return -E_INVAL;
 }
-

@@ -1,0 +1,8 @@
+Question 1. Do you have to do anything else to ensure that this I/O privilege setting is saved and restored properly when you
+subsequently switch from one environment to another? Why?
+
+Answer: Yes, you would have to do more to ensure that the I/O privilege setting is saved and restored properly when switching between environments.
+This is because the I/O privilege level which dictates the ability to perform I/O operations is stored in the EFLAGS register of each process.
+During a context switch, the operating system must save the current process's EFLAGS register and restore the EFLAGS register of the incoming process
+to preserve the correct I/O privilege level. Failing to do so could lead to security risks like unauthorized I/O access or prevent legitimate I/O operations,
+affecting system stability and reliability.
